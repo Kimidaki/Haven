@@ -413,6 +413,46 @@
                                                     <TextBox Grid.Column="1" Text="{Binding GeoPrim.AttributeText, UpdateSourceTrigger=LostFocus}"/>
                                                 </Grid>
                                             </StackPanel>
+                                            <StackPanel Spacing="6" IsVisible="{Binding HasOctocamo}">
+                                                <TextBlock FontWeight="SemiBold" Text="OctoCamo contact"/>
+                                                <TextBlock Text="Contact material / muscle-suit pattern"/>
+                                                <ComboBox ItemsSource="{Binding Octocamo.Materials}"
+                                                          IsEnabled="{Binding Octocamo.CanEdit}"
+                                                          SelectedItem="{Binding Octocamo.SelectedMaterial, Mode=TwoWay}">
+                                                    <ComboBox.ItemTemplate>
+                                                        <DataTemplate x:DataType="editors:OctocamoMaterialOption">
+                                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                                <Image Source="{Binding Preview}" Width="40" Height="32" Stretch="UniformToFill"/>
+                                                                <TextBlock Text="{Binding DisplayName}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                                                            </StackPanel>
+                                                        </DataTemplate>
+                                                    </ComboBox.ItemTemplate>
+                                                </ComboBox>
+                                                <TextBlock Text="{Binding Octocamo.PatternText}" TextWrapping="Wrap"/>
+                                                <Image Source="{Binding Octocamo.PatternPreview}" Width="160" Height="160" Stretch="Uniform" HorizontalAlignment="Left"/>
+                                                <TextBlock Text="Cloth colour"/>
+                                                <ComboBox ItemsSource="{Binding Octocamo.Colours}"
+                                                          IsEnabled="{Binding Octocamo.CanEdit}"
+                                                          SelectedItem="{Binding Octocamo.SelectedColour, Mode=TwoWay}">
+                                                    <ComboBox.ItemTemplate>
+                                                        <DataTemplate x:DataType="editors:OctocamoColourOption">
+                                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                                <Border Width="20" Height="16" Background="{Binding Preview}"/>
+                                                                <TextBlock Text="{Binding DisplayName}" TextTrimming="CharacterEllipsis"/>
+                                                            </StackPanel>
+                                                        </DataTemplate>
+                                                    </ComboBox.ItemTemplate>
+                                                </ComboBox>
+                                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                                    <Border Width="36" Height="24" Background="{Binding Octocamo.ClothPreview}"/>
+                                                    <TextBlock Text="{Binding Octocamo.ClothText}" VerticalAlignment="Center"/>
+                                                </StackPanel>
+                                                <TextBlock Text="{Binding Octocamo.Status}" TextWrapping="Wrap"/>
+                                                <TextBlock Text="{Binding Octocamo.ScopeText}" TextWrapping="Wrap"/>
+                                                <TextBlock Foreground="{DynamicResource MutedTextBrush}"
+                                                           Text="{Binding Octocamo.PreviewExplanation}"
+                                                           TextWrapping="Wrap"/>
+                                            </StackPanel>
                                         </StackPanel>
                                     </DataTemplate>
 

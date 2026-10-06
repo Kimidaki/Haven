@@ -247,6 +247,8 @@ public sealed record PrimEntity(
     : MapEntity(GeoPrim?.DisplayName ?? Prim.DisplayName)
 {
     public bool HasGeoPrim => GeoPrim != null;
+    public OctocamoSelection? Octocamo { get; init; }
+    public bool HasOctocamo => Octocamo != null;
 }
 
 public sealed record EffectEntity(CollisionEffectViewModel Effect)
@@ -264,7 +266,7 @@ public sealed class MapOutlineGroup
     public ObservableCollection<object> Children { get; } = [];
 }
 
-public sealed class MapEditorViewModel : INotifyPropertyChanged, IDisposable
+public sealed partial class MapEditorViewModel : INotifyPropertyChanged, IDisposable
 {
     private readonly SceneHost _sceneHost;
     private readonly CollisionEditorViewModel _collisionEditor;
@@ -728,6 +730,7 @@ public sealed class MapEditorViewModel : INotifyPropertyChanged, IDisposable
         {
             await _collisionEditor.SaveAsync(cancellationToken);
         }
+        await SaveOctocamoMappingAsync(cancellationToken);
         foreach (var session in _lightDocuments.Where(session => session.IsDirty))
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -937,6 +940,7 @@ public sealed class MapEditorViewModel : INotifyPropertyChanged, IDisposable
         }
         CancelLightingBake();
         CancelManipulation();
+        _octocamoCatalog?.Dispose();
     }
 
     private void ProcessDragUpdate(MapDragUpdate update)
@@ -1190,7 +1194,14 @@ public sealed class MapEditorViewModel : INotifyPropertyChanged, IDisposable
         if (_collisionEditor.SelectedPrim is { } prim)
         {
             var geoPrim = _collisionEditor.SelectedGeoPrim;
-            SetSelectedEntity(new PrimEntity(prim, geoPrim), (object?)geoPrim ?? prim);
+            var octocamo = _octocamoViewEnabled && geoPrim?.Poly != null &&
+                prim.ParentBlock is { } primBlock && _octocamoCatalog != null
+                ? new OctocamoSelection(geoPrim, primBlock.Block, _octocamoCatalog,
+                    OnOctocamoEdited, _collisionEditor.SetPolygonAttributeWithAliases,
+                    muscle => OctocamoMusclePatternView = muscle)
+                : null;
+            SetSelectedEntity(new PrimEntity(prim, geoPrim) { Octocamo = octocamo },
+                (object?)geoPrim ?? prim);
             return;
         }
         if (_collisionEditor.SelectedBlock is { } block)
