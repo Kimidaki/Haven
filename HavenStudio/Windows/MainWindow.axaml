@@ -170,6 +170,17 @@
                         <MenuItem Header="Open Folder" Click="OnOpenFolder"/>
                         <MenuItem Header="Preferences" Click="OnOpenPreferences"/>
                     </MenuItem>
+                    <MenuItem Header="View" IsVisible="{Binding IsMapSelected}">
+                        <MenuItem Header="Vegetation" ToggleType="CheckBox"
+                                  IsChecked="{Binding MapEditor.VegetationVisible, Mode=TwoWay}"
+                                  ToolTip.Tip="Preview GCX-linked PDL vegetation stored in cache.dar."/>
+                        <MenuItem Header="Cameras" ToggleType="CheckBox"
+                                  IsChecked="{Binding MapEditor.CamerasVisible, Mode=TwoWay}"
+                                  ToolTip.Tip="GCX spectator-camera presets. Select from the outline to find out-of-bounds cameras."/>
+                        <MenuItem Header="SDM Area" ToggleType="CheckBox"
+                                  IsChecked="{Binding MapEditor.SdmAreaVisible, Mode=TwoWay}"
+                                  ToolTip.Tip="Visualize the GCX area_max starting boundary and area_min final boundary around PRP_STAGE_CENTER."/>
+                    </MenuItem>
                     <MenuItem Header="OctoCamo" IsVisible="{Binding IsMapSelected}">
                         <MenuItem Header="Enable OctoCamo view" ToggleType="CheckBox"
                                   IsChecked="{Binding MapEditor.OctocamoViewEnabled, Mode=TwoWay}"
@@ -182,7 +193,7 @@
                         <MenuItem Header="Box-select faces" ToggleType="CheckBox"
                                   IsChecked="{Binding MapEditor.BoxSelectOctocamoFaces, Mode=TwoWay}"
                                   IsEnabled="{Binding MapEditor.OctocamoViewEnabled}"
-                                  ToolTip.Tip="Left-drag to list contact faces intersecting a box, including overlaps. Shift + left-drag also works."/>
+                                  ToolTip.Tip="Left-drag to list all contact faces intersecting a box, including overlaps. Shift + left-drag also works without enabling this tool."/>
                         <Separator/>
                         <MenuItem Header="Load camo previews..."
                                   IsEnabled="{Binding MapEditor.HasOctocamoTable}"

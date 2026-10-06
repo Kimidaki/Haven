@@ -59,6 +59,7 @@ public partial class MainWindow : Window
         InitializeComponent();
         using var iconStream = AssetLoader.Open(new Uri("avares://HavenStudio/Assets/icon.png"));
         Icon = new WindowIcon(iconStream);
+        LoadRuntimeMetadata();
         _viewModel = new MainWindowViewModel();
         _fileOpenCoordinator = new FileOpenCoordinator(new MainWindowFileOpenActions(this, _viewModel));
         DataContext = _viewModel;
@@ -74,13 +75,33 @@ public partial class MainWindow : Window
         ConfigureHexEditor();
         ConfigureDecompilationEditor();
         UpdateViewportHotkeys();
-        DictionaryFile.Load("./dictionary.txt", "./dictionary-aliases.txt");
-        CommandFile.Load("./commands.txt");
         _viewModel.PropertyChanged += OnViewModelPropertyChanged;
         _viewModel.GcxEditor.PropertyChanged += OnGcxEditorPropertyChanged;
         HookViewportEvents();
         _gcxScriptTreeView = _gcxEditorView?.ScriptTreeView;
         Closed += OnWindowClosed;
+    }
+
+    private static void LoadRuntimeMetadata()
+    {
+        var applicationDirectory = AppContext.BaseDirectory;
+        var dictionaryPath = Path.Combine(applicationDirectory, "dictionary.txt");
+        var aliasesPath = Path.Combine(applicationDirectory, "dictionary-aliases.txt");
+        var commandsPath = Path.Combine(applicationDirectory, "commands.txt");
+
+        if (!DictionaryFile.Load(dictionaryPath, aliasesPath))
+        {
+            _log.Warning(
+                "Hash dictionary files were not found in the application directory {ApplicationDirectory}",
+                applicationDirectory);
+        }
+
+        if (!CommandFile.Load(commandsPath))
+        {
+            _log.Warning(
+                "Command dictionary was not found in the application directory {ApplicationDirectory}",
+                applicationDirectory);
+        }
     }
 
     private void ConfigureHexEditor()
@@ -248,6 +269,7 @@ public partial class MainWindow : Window
     {
         PreferencesWindow.ShowSingleton(this);
     }
+
     private async void OnRemapOctocamo(object? sender, RoutedEventArgs e)
     {
         try { await new OctocamoRemapWindow(_viewModel.MapEditor.CreateOctocamoRemapper()).ShowDialog(this); }
@@ -513,7 +535,9 @@ public partial class MainWindow : Window
         _lastViewportPointerPosition = e.GetPosition(viewport);
         viewport.Focus();
         e.Pointer.Capture(viewport);
-        _viewModel.MapEditor.PointerPressed(_lastViewportPointerPosition.Value, viewport,
+        _viewModel.MapEditor.PointerPressed(
+            _lastViewportPointerPosition.Value,
+            viewport,
             e.KeyModifiers.HasFlag(KeyModifiers.Shift));
     }
 

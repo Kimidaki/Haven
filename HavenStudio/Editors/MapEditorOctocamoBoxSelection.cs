@@ -16,17 +16,6 @@ namespace HavenStudio.Editors;
 public sealed partial class MapEditorViewModel
 {
     private bool _boxSelectOctocamoFaces;
-    private Point? _selectionBoxStart;
-    private bool _selectionBoxVisible;
-    private double _selectionBoxLeft;
-    private double _selectionBoxTop;
-    private double _selectionBoxWidth;
-    private double _selectionBoxHeight;
-    public bool SelectionBoxVisible => _selectionBoxVisible;
-    public double SelectionBoxLeft => _selectionBoxLeft;
-    public double SelectionBoxTop => _selectionBoxTop;
-    public double SelectionBoxWidth => _selectionBoxWidth;
-    public double SelectionBoxHeight => _selectionBoxHeight;
     private OctocamoFaceCandidate? _selectedOctocamoFace;
     private string _octocamoFaceFilter = string.Empty;
     private bool _changingOctocamoBatch;
@@ -42,6 +31,7 @@ public sealed partial class MapEditorViewModel
     };
     private Model3D? _focusedOctocamoSource;
     private CollisionGeoPrimViewModel? _focusedOctocamoPolygon;
+    private Model3D? _lastOctocamoPickModel;
     public ObservableCollection<OctocamoFaceCandidate> OctocamoBoxFaces { get; } = [];
     public string OctocamoFaceFilter
     {
@@ -154,6 +144,7 @@ public sealed partial class MapEditorViewModel
         HashSet<CollisionGeoPrimViewModel> selected)
     {
         var trianglePolygons = _collisionEditor.GetTrianglePolygons(source);
+        _placementCollisionLookup.TryGetValue(source, out var placed);
         var positions = new List<float>();
         var indices = new List<uint>();
         int count = source.Indices.Length / 3;
@@ -162,6 +153,17 @@ public sealed partial class MapEditorViewModel
             CollisionGeoPrimViewModel? polygon = null;
             if (trianglePolygons != null && triangle < trianglePolygons.Count)
                 polygon = trianglePolygons[triangle];
+            else if (placed.Prims != null && triangle < placed.Prims.Length && triangle < placed.Polys.Length)
+            {
+                int primIndex = placed.Prims[triangle];
+                if (primIndex >= 0 && primIndex < placed.Block.Prims.Count)
+                {
+                    var primitive = placed.Block.Prims[primIndex];
+                    int polygonIndex = placed.Polys[triangle];
+                    if (polygonIndex >= 0 && polygonIndex < primitive.Children.Count)
+                        polygon = primitive.Children[polygonIndex];
+                }
+            }
             if (polygon == null || !selected.Contains(polygon)) continue;
             int start = triangle * 3;
             if (source.Indices[start..(start + 3)].Any(index => index * 3 + 2 >= source.Positions.Length))
@@ -220,7 +222,7 @@ public sealed partial class MapEditorViewModel
                 OctocamoMusclePatternView = muscle;
                 OnOctocamoEdited();
                 OnCollisionSelectionChanged();
-                SetManipulationStatus($"OctoCamo batch {(forward ? "applied" : "undone")}: {edits.Count} unique face selectors. Save Map updates the loaded GEOM and its aliases.");
+                SetMapSaveStatus($"OctoCamo batch {(forward ? "applied" : "undone")}: {edits.Count} unique face selectors. Save Map updates {_collisionEditor.GeomPath} and its aliases, not existing .enc copies. Unselected independent faces are unchanged.");
             }
             _history.Execute($"change OctoCamo on {edits.Count} faces", () => Apply(true), () => Apply(false));
         });
@@ -284,8 +286,12 @@ public sealed partial class MapEditorViewModel
     {
         ClearOctocamoFaceBox();
         if (!_octocamoViewEnabled || _octocamoCatalog == null) return;
-        var models = _sceneHost.GetLayerModels(SceneLayer.Collision);
+        var models = _sceneHost.GetLayerModels(SceneLayer.Collision)
+            .Concat(_sceneHost.GetLayerModels(SceneLayer.PlacementCollision));
         var faces = new Dictionary<(object? Instance, int Offset), OctocamoFaceCandidate>();
+        var placementOwners = _placementCollisionModels.SelectMany(pair =>
+            pair.Value.Select(model => (Model: model, Placement: pair.Key)))
+            .ToDictionary(item => item.Model, item => item.Placement);
         // Do not query the depth buffer/closest ray hit: selection must expose the
         // independently editable polygons hidden behind the visible surface.
         foreach (var hit in SelectionBoxPicker.FindTriangles(rectangle, view, projection, width, height, models))
@@ -294,9 +300,26 @@ public sealed partial class MapEditorViewModel
             CollisionGeoPrimViewModel? polygon;
             object? instance = null;
             var owner = "Static collision";
-            if (!_collisionEditor.TryResolveHit(hit, out var selection)) continue;
-            primitive = selection.Prim;
-            polygon = selection.GeoPrim;
+            if (_placementCollisionLookup.TryGetValue(hit.Model, out var placed))
+            {
+                var primIndex = placed.Prims[hit.TriangleIndex];
+                var polyIndex = placed.Polys[hit.TriangleIndex];
+                if (primIndex < 0 || primIndex >= placed.Block.Prims.Count) continue;
+                primitive = placed.Block.Prims[primIndex];
+                polygon = polyIndex >= 0 && polyIndex < primitive.Children.Count ? primitive.Children[polyIndex] : null;
+                var placement = placementOwners.GetValueOrDefault(hit.Model);
+                // Distinct placed instances remain individually selectable, even
+                // when they share the same reference and selector bytes.
+                instance = (object?)placement ?? hit.Model;
+                owner = placement != null && _placements.TryGetValue(placement, out var entity)
+                    ? $"Placement: {entity.DisplayName}" : $"Placement: {hit.Model.Name}";
+            }
+            else
+            {
+                if (!_collisionEditor.TryResolveHit(hit, out var selection)) continue;
+                primitive = selection.Prim;
+                polygon = selection.GeoPrim;
+            }
             if (primitive == null || polygon?.Poly == null || primitive.ParentBlock == null ||
                 !primitive.IsVisible || !polygon.IsVisible ||
                 (primitive.Prim.Attribute & GeoCollisionAttributes.Player) == 0) continue;
@@ -315,7 +338,7 @@ public sealed partial class MapEditorViewModel
         OnPropertyChanged(nameof(OctocamoBoxSummary));
         OnPropertyChanged(nameof(FilteredOctocamoBoxFaces));
         SetManipulationStatus(faces.Count == 0
-            ? "No visible player-contact faces intersect this box. Check Collision visibility."
+            ? "No visible player-contact faces intersect this box. Check Collision / Placement collision visibility."
             : $"{faces.Count} OctoCamo faces found. Select an exact face from the left sidebar; no data has been changed.");
     }
 
@@ -337,48 +360,4 @@ public sealed partial class MapEditorViewModel
             OnPropertyChanged(nameof(SelectedOctocamoFace));
         }
     }
-
-    internal static Rect NormalizeSelectionRectangle(Point first, Point second)
-    {
-        var left = Math.Min(first.X, second.X);
-        var top = Math.Min(first.Y, second.Y);
-        return new Rect(left, top, Math.Max(first.X, second.X) - left,
-            Math.Max(first.Y, second.Y) - top);
-    }
-
-    private static Point ClampToViewport(Point point, OpenGL3DControl control) =>
-        new(Math.Clamp(point.X, 0, control.Bounds.Width),
-            Math.Clamp(point.Y, 0, control.Bounds.Height));
-
-    private void UpdateSelectionBox(Point first, Point second, bool visible)
-    {
-        var rectangle = NormalizeSelectionRectangle(first, second);
-        _selectionBoxLeft = rectangle.X;
-        _selectionBoxTop = rectangle.Y;
-        _selectionBoxWidth = rectangle.Width;
-        _selectionBoxHeight = rectangle.Height;
-        _selectionBoxVisible = visible;
-        OnPropertyChanged(nameof(SelectionBoxLeft));
-        OnPropertyChanged(nameof(SelectionBoxTop));
-        OnPropertyChanged(nameof(SelectionBoxWidth));
-        OnPropertyChanged(nameof(SelectionBoxHeight));
-        OnPropertyChanged(nameof(SelectionBoxVisible));
-    }
-
-    private void ResetSelectionBox()
-    {
-        _selectionBoxStart = null;
-        if (!_selectionBoxVisible && _selectionBoxWidth == 0 && _selectionBoxHeight == 0) return;
-        _selectionBoxVisible = false;
-        _selectionBoxLeft = 0;
-        _selectionBoxTop = 0;
-        _selectionBoxWidth = 0;
-        _selectionBoxHeight = 0;
-        OnPropertyChanged(nameof(SelectionBoxVisible));
-        OnPropertyChanged(nameof(SelectionBoxLeft));
-        OnPropertyChanged(nameof(SelectionBoxTop));
-        OnPropertyChanged(nameof(SelectionBoxWidth));
-        OnPropertyChanged(nameof(SelectionBoxHeight));
-    }
 }
-

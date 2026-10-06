@@ -1,11 +1,17 @@
 using System.Buffers.Binary;
+using Avalonia;
 using HavenStudio.Editors;
 using HavenStudio.Extensions;
 using HavenStudio.Formats.Geo;
+using HavenStudio.Rendering;
+using HavenStudio.Services.Workspace;
+using HavenStudio.Tests.TestSupport;
+using OpenTK.Mathematics;
+using Xunit.Abstractions;
 
 namespace HavenStudio.Tests.Editors;
 
-public sealed class OctocamoBatchEditTests
+public sealed class OctocamoBatchEditTests(ITestOutputHelper output)
 {
     [Theory]
     [InlineData(true, false)]
@@ -74,6 +80,124 @@ public sealed class OctocamoBatchEditTests
         Assert.Contains("disagree", vm.Status);
         Assert.Throws<InvalidOperationException>(() => new OctocamoBatchEditViewModel([], [], catalog, (_, _) => { }));
         Assert.Throws<InvalidOperationException>(() => new OctocamoBatchEditViewModel([Candidate(a, catalog)], [], catalog, (_, _) => { }));
+    }
+
+    [Fact]
+    public async Task Opt_in_filtered_real_JJ_batch_is_undoable_surgical_and_saved_without_touching_source()
+    {
+        var stage = Environment.GetEnvironmentVariable("HAVEN_OCTOCAMO_STAGE");
+        if (string.IsNullOrWhiteSpace(stage)) return;
+        using var temp = new TempDirectory();
+        var path = temp.GetPath("n023a.geom");
+        var original = File.ReadAllBytes(Path.Combine(stage, "n023a.geom"));
+        var originalDar = File.ReadAllBytes(Path.Combine(stage, "cache.dar"));
+        var baselineGeometry = new GeomFile(new MemoryStream(original, false), Endianness.Big);
+        GeoStructureValidationResult baseline;
+        try { baseline = GeoStructureValidator.Validate(baselineGeometry); }
+        finally { baselineGeometry.CloseStream(); }
+        File.WriteAllBytes(path, original);
+        File.WriteAllBytes(temp.GetPath("cache.dar"), originalDar);
+        var workspace = new WorkspaceCatalog(temp.Path, Endianness.Big);
+        await workspace.ScanAsync();
+        var host = new SceneHost();
+        var editor = new CollisionEditorViewModel(host);
+        using var gcx = new GcxEditorViewModel(host);
+        using var map = new MapEditorViewModel(host, editor, gcx);
+        editor.SetWorkspace(workspace);
+        await editor.LoadFromWorkspacePathAsync(WorkspacePath.Physical(path));
+        try
+        {
+            await map.DiscoverOctocamoAsync(workspace);
+            map.OctocamoViewEnabled = true;
+            var center = new Vector3(-49793.31f, 4000, -244209.67f);
+            var view = Matrix4.LookAt(center + new Vector3(0, 10000, 0), center, -Vector3.UnitZ);
+            map.SelectOctocamoFacesInBox(new Rect(495, 495, 10, 10), view,
+                Matrix4.CreateOrthographic(10000, 10000, 1, 50000), 1000, 1000);
+            map.OctocamoFaceFilter = "15BCCD"; // SOIL_B; tests do not initialize the UI name dictionary
+            Assert.True(map.FilteredOctocamoBoxFaces.Count > 1, string.Join("\n", map.OctocamoBoxFaces.Select(face => face.MaterialText)));
+            map.SelectAllFilteredOctocamoFaces();
+            Assert.Equal(map.FilteredOctocamoBoxFaces.ToHashSet(), map.OctocamoBoxFaces.Where(face => face.IsBatchSelected).ToHashSet());
+            Assert.True(map.CanEditOctocamoBatch);
+            map.OctocamoFaceFilter = "296cc6";
+            Assert.False(map.CanEditOctocamoBatch); // a changed search cannot silently retain hidden checked items
+            map.OctocamoFaceFilter = "15BCCD";
+            map.SelectAllFilteredOctocamoFaces();
+            var checkedFaces = map.OctocamoBoxFaces.Where(face => face.IsBatchSelected).ToArray();
+            var before = editor.Blocks.SelectMany(block => block.Prims).SelectMany(prim => prim.Children)
+                .Where(poly => poly.Poly != null).ToDictionary(poly => poly, poly => poly.Poly!.Attribute);
+            var cloth = map.CreateOctocamoBatchEditor();
+            cloth.SelectedColour = cloth.Colours.First(option => !cloth.CurrentColour.Contains($"0x{option.Hash:X6}"));
+            var previousColours = host.GetLayerModels(SceneLayer.Collision).ToDictionary(model => model, model => model.Colors.ToArray());
+            Assert.True(cloth.Apply(), cloth.Status);
+            Assert.False(map.OctocamoMusclePatternView);
+            Assert.Contains(previousColours, pair => !pair.Value.SequenceEqual(pair.Key.Colors));
+            map.Undo();
+            Assert.All(before, pair => Assert.Equal(pair.Value, pair.Key.Poly!.Attribute));
+            var slot = Environment.GetEnvironmentVariable("HAVEN_OCTOCAMO_SLOT");
+            if (!string.IsNullOrWhiteSpace(slot)) await map.LoadOctocamoPatternSlotAsync(slot);
+            var previousUvs = host.GetLayerModels(SceneLayer.Collision).ToDictionary(model => model, model => model.UVs.ToArray());
+            var batch = map.CreateOctocamoBatchEditor();
+            batch.SelectedMaterial = batch.Materials.Single(option => option.Hash == 0x7A24CE); // TURF_A
+            batch.SelectedColour = batch.Colours.First(option => option.Hash != 0x22B939);
+            var edits = batch.BuildPlan().ToDictionary(edit => edit.Offset);
+            Assert.True(edits.Count > 1);
+            Assert.True(batch.Apply(), batch.Status);
+            if (!string.IsNullOrWhiteSpace(slot))
+            {
+                Assert.True(map.OctocamoMusclePatternView);
+                Assert.Contains(previousUvs, pair => !pair.Value.SequenceEqual(pair.Key.UVs));
+            }
+            Assert.True(map.CanUndo);
+            Assert.True(editor.IsDirty);
+            foreach (var (poly, value) in before)
+            {
+                var offset = Offset(poly);
+                Assert.Equal(edits.TryGetValue(offset, out var edit) ? edit.After : value, poly.Poly!.Attribute);
+            }
+            Assert.Equal(checkedFaces, map.OctocamoBoxFaces.Where(face => face.IsBatchSelected));
+            map.Undo();
+            Assert.All(before, pair => Assert.Equal(pair.Value, pair.Key.Poly!.Attribute));
+            Assert.False(map.CanUndo);
+            map.Redo();
+            Assert.All(edits.Values, edit => Assert.Equal(edit.After, edit.Polygon.Poly!.Attribute));
+            await map.SaveAsync();
+            var saved = File.ReadAllBytes(path);
+            Assert.False(editor.IsDirty);
+            Assert.Equal(original.Length, saved.Length);
+            var changedBytes = edits.Keys.SelectMany(offset => new[] { offset, offset + 1 }).ToHashSet();
+            for (var i = 0; i < original.Length; i++)
+                if (!changedBytes.Contains(i) && original[i] != saved[i]) Assert.Fail($"Unexpected change at 0x{i:X}");
+            Assert.All(edits.Values, edit => Assert.Equal(edit.After, BinaryPrimitives.ReadUInt16BigEndian(saved.AsSpan(edit.Offset, 2))));
+            Assert.Equal(original, File.ReadAllBytes(editor.LastSaveBackupPath!));
+            Assert.Equal(originalDar, File.ReadAllBytes(temp.GetPath("cache.dar")));
+            var reopened = new GeomFile(new MemoryStream(saved, false), Endianness.Big);
+            try
+            {
+                var validated = GeoStructureValidator.Validate(reopened);
+                Assert.Equal(baseline.Summary, validated.Summary);
+                Assert.Equal(baseline.Issues, validated.Issues); // no new structural issues in the user's existing stage
+                foreach (var prim in reopened.BlockFaceData.Values.SelectMany(prims => prims))
+                    if (prim.Poly != null)
+                        for (var i = 0; i < prim.Poly.Length; i++)
+                            if (edits.TryGetValue(prim.Offset + 0x26 + i * 8, out var edit)) Assert.Equal(edit.After, prim.Poly[i].Attribute);
+            }
+            finally { reopened.CloseStream(); }
+            var crypto = new HavenStudio.CryptoService();
+            Assert.Equal(saved, crypto.Decrypt(crypto.Encrypt(saved, "stage/n023a"), "stage/n023a"));
+            Assert.Equal(original, File.ReadAllBytes(Path.Combine(stage, "n023a.geom")));
+            Assert.Equal(originalDar, File.ReadAllBytes(Path.Combine(stage, "cache.dar")));
+            // Intervening individual edits must not be clobbered by batch undo.
+            var first = edits.Values.First();
+            editor.SetPolygonAttributeWithAliases(first.Polygon, (ushort)(first.After ^ 0x800));
+            var current = before.Keys.ToDictionary(poly => poly, poly => poly.Poly!.Attribute);
+            map.Undo();
+            Assert.All(current, pair => Assert.Equal(pair.Value, pair.Key.Poly!.Attribute));
+            editor.Clear();
+            Assert.False(batch.Apply());
+            Assert.Contains("GEOM has changed", batch.Status);
+            output.WriteLine($"Filtered batch changed {edits.Count} selectors; undo/redo, alias read-back, exact byte boundaries, unchanged DAR, and stage-key round trip passed.");
+        }
+        finally { editor.Clear(); }
     }
 
     private static int Offset(CollisionGeoPrimViewModel poly) => poly.ParentPrim.Prim.Offset + 0x26 + poly.ParentPrim.Children.IndexOf(poly) * 8;
