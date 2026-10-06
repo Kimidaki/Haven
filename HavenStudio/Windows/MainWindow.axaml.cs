@@ -513,7 +513,8 @@ public partial class MainWindow : Window
         _lastViewportPointerPosition = e.GetPosition(viewport);
         viewport.Focus();
         e.Pointer.Capture(viewport);
-        _viewModel.MapEditor.PointerPressed(_lastViewportPointerPosition.Value, viewport);
+        _viewModel.MapEditor.PointerPressed(_lastViewportPointerPosition.Value, viewport,
+            e.KeyModifiers.HasFlag(KeyModifiers.Shift));
     }
 
     private void OnViewportPointerReleased(object? sender, PointerReleasedEventArgs e)

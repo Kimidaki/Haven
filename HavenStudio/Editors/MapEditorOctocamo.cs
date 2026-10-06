@@ -48,6 +48,9 @@ public sealed partial class MapEditorViewModel
             }
             else
             {
+                BoxSelectOctocamoFaces = false;
+                ClearOctocamoFaceBox();
+                ResetSelectionBox();
                 _collisionEditor.SetOctocamoCatalog(null);
                 if (_preOctocamoVisibility is { } old)
                 {
@@ -62,6 +65,7 @@ public sealed partial class MapEditorViewModel
             }
             OnPropertyChanged();
             OnCollisionSelectionChanged();
+            RefreshOctocamoFocusWireframe();
         }
     }
 
@@ -74,6 +78,7 @@ public sealed partial class MapEditorViewModel
             _octocamoMusclePatternView = value;
             if (_octocamoCatalog != null) _octocamoCatalog.PreviewMusclePatterns = value;
             if (_octocamoViewEnabled) _collisionEditor.SetOctocamoCatalog(_octocamoCatalog);
+            RefreshOctocamoBoxLabels();
             OnPropertyChanged();
         }
     }
@@ -90,6 +95,7 @@ public sealed partial class MapEditorViewModel
             OctocamoMusclePatternView = true;
             if (!_octocamoViewEnabled) OctocamoViewEnabled = true;
             else _collisionEditor.SetOctocamoCatalog(catalog);
+            RefreshOctocamoBoxLabels();
             OnCollisionSelectionChanged();
             SetManipulationStatus(catalog.IsMappingDirty
                 ? "Stage-wide OctoCamo remap pending. Save Map writes the OCTT; regular textures are unchanged."
@@ -111,6 +117,7 @@ public sealed partial class MapEditorViewModel
         OctocamoMusclePatternView = true;
         if (!_octocamoViewEnabled) OctocamoViewEnabled = true;
         else _collisionEditor.SetOctocamoCatalog(catalog);
+        RefreshOctocamoBoxLabels();
         OnCollisionSelectionChanged();
     }
 
@@ -184,6 +191,7 @@ public sealed partial class MapEditorViewModel
         OnPropertyChanged(nameof(CanRemapOctocamo));
         OnPropertyChanged(nameof(OctocamoStatus));
         OnCollisionSelectionChanged();
+        ClearOctocamoFaceBox();
         previous?.Dispose();
     }
 
@@ -199,6 +207,7 @@ public sealed partial class MapEditorViewModel
     private void OnOctocamoEdited()
     {
         if (_octocamoViewEnabled) _collisionEditor.SetOctocamoCatalog(_octocamoCatalog);
+        RefreshOctocamoBoxLabels();
         SetManipulationStatus("OctoCamo polygon edit pending. Save Map writes the edited GEOM face and shared aliases.");
     }
 }

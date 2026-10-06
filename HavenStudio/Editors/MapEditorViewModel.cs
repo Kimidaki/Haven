@@ -8,6 +8,7 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia3DControl;
 using Avalonia3DControl.Core.Models;
 using HavenStudio.Editors.GcxEditing;
@@ -614,14 +615,33 @@ public sealed partial class MapEditorViewModel : INotifyPropertyChanged, IDispos
         SelectEntity(entity);
     }
 
-    public void PointerPressed(Point point, OpenGL3DControl control)
+    public void PointerPressed(Point point, OpenGL3DControl control, bool boxSelectionModifier = false)
     {
+        if (_octocamoViewEnabled && (boxSelectionModifier || BoxSelectOctocamoFaces))
+        {
+            _manipulationController.Cancel();
+            _selectionBoxStart = ClampToViewport(point, control);
+            UpdateSelectionBox(_selectionBoxStart.Value, _selectionBoxStart.Value, visible: false);
+            return;
+        }
         var entity = PickEntityAt(point, control);
         _manipulationController.PointerPressed(point, CreateManipulationTarget(entity));
     }
 
     public void PointerMoved(Point point, OpenGL3DControl control, bool heightOnly)
     {
+        if (_selectionBoxStart is { } selectionStart)
+        {
+            var current = ClampToViewport(point, control);
+            var dx = current.X - selectionStart.X;
+            var dy = current.Y - selectionStart.Y;
+            var scaling = TopLevel.GetTopLevel(control)?.RenderScaling ?? 1.0;
+            var visible = _selectionBoxVisible ||
+                (dx * dx + dy * dy) * scaling * scaling >=
+                MapManipulationController.DragThreshold * MapManipulationController.DragThreshold;
+            UpdateSelectionBox(selectionStart, current, visible);
+            return;
+        }
         if (_manipulationController.TryUpdate(point, control, heightOnly, out var update))
         {
             ProcessDragUpdate(update);
@@ -634,6 +654,15 @@ public sealed partial class MapEditorViewModel : INotifyPropertyChanged, IDispos
 
     public void PointerReleased(Point point, OpenGL3DControl control, bool heightOnly)
     {
+        if (_selectionBoxStart is { } selectionStart)
+        {
+            var wasSelecting = _selectionBoxVisible;
+            var current = ClampToViewport(point, control);
+            var rectangle = NormalizeSelectionRectangle(selectionStart, current);
+            ResetSelectionBox();
+            if (wasSelecting) CompleteOctocamoBoxSelection(rectangle, control);
+            return;
+        }
         if (_manipulationController.TryUpdate(point, control, heightOnly, out var update))
         {
             ProcessDragUpdate(update);
@@ -675,6 +704,7 @@ public sealed partial class MapEditorViewModel : INotifyPropertyChanged, IDispos
 
     public void CancelManipulation()
     {
+        ResetSelectionBox();
         _manipulationController.Cancel();
         _history.CancelCoalesced();
     }
@@ -1186,6 +1216,8 @@ public sealed partial class MapEditorViewModel : INotifyPropertyChanged, IDispos
 
     private void OnCollisionSelectionChanged()
     {
+        SynchronizeOctocamoBoxSelection();
+        RefreshOctocamoFocusWireframe();
         if (_collisionEditor.SelectedEffect is { } effect)
         {
             SetSelectedEntity(new EffectEntity(effect), effect);

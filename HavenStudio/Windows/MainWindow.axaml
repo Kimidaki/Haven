@@ -179,6 +179,10 @@
                                   IsChecked="{Binding MapEditor.OctocamoMusclePatternView, Mode=TwoWay}"
                                   IsEnabled="{Binding MapEditor.HasOctocamoPatternPreviews}"
                                   ToolTip.Tip="Raw muscle diffuse preview; disable to show the independent cloth colour."/>
+                        <MenuItem Header="Box-select faces" ToggleType="CheckBox"
+                                  IsChecked="{Binding MapEditor.BoxSelectOctocamoFaces, Mode=TwoWay}"
+                                  IsEnabled="{Binding MapEditor.OctocamoViewEnabled}"
+                                  ToolTip.Tip="Left-drag to list contact faces intersecting a box, including overlaps. Shift + left-drag also works."/>
                         <Separator/>
                         <MenuItem Header="Load camo previews..."
                                   IsEnabled="{Binding MapEditor.HasOctocamoTable}"
