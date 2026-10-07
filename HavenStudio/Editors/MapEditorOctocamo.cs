@@ -25,7 +25,9 @@ public sealed partial class MapEditorViewModel
     public bool CanRemapOctocamo => _octocamoCatalog?.HasPatternLibrary == true && _octocamoTablePath != null;
     public string OctocamoStatus => _octocamoCatalog == null
         ? "No stage OctoCamo table (.octt) found."
-        : "Player-contact polygons only. Muscle texture shows the decoded pattern; otherwise the preview shows cloth colour. Magenta means missing mapping or preview.";
+        : "Player-contact polygons only. Muscle texture shows the decoded pattern; otherwise the preview shows cloth colour. Magenta means missing mapping or preview." +
+          (_octocamoCatalog.AmbiguousMaterialHashes.Count == 0 ? string.Empty :
+              $" {_octocamoCatalog.AmbiguousMaterialHashes.Count} material(s) have conflicting duplicate OCTT rows; those materials are shown as unmapped and their rows are preserved.");
 
     public bool OctocamoViewEnabled
     {
