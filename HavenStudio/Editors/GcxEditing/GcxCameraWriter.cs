@@ -14,6 +14,27 @@ public sealed record GcxCameraReference(GcxScript Script, string ScriptName, int
 
 public static class GcxCameraWriter
 {
+    public static IReadOnlyList<GcxCameraReference> ScanDocument(Gcx document)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        var cameras = new List<GcxCameraReference>();
+        Add(document.MainScript, "main");
+        for (var index = 0; index < document.ScriptDefinitions.Count; index++)
+            if (document.ScriptDefinitions[index].Script is { } script)
+                Add(script, $"proc{index + 1}");
+        return cameras;
+
+        void Add(GcxScript script, string name)
+        {
+            var tables = Scan(script.Bytes);
+            for (var table = 0; table < tables.Count; table++)
+                for (var row = 0; row < tables[table].Count; row++)
+                    cameras.Add(new GcxCameraReference(script, name, table, row,
+                        Vector(tables[table], row * 7), Vector(tables[table], row * 7 + 3),
+                        tables[table].Literals[row * 7 + 6].Value));
+        }
+    }
+
     public static IReadOnlyList<GcxCameraTableSite> Scan(byte[] bytes)
     {
         var sites = new List<GcxCameraTableSite>();

@@ -592,7 +592,9 @@ public sealed partial class MapEditorViewModel : INotifyPropertyChanged, IDispos
     }
     public string OctocamoStatus => _octocamoCatalog == null
         ? "No stage OctoCamo table (.octt) found."
-        : "Player-contact polygons only. Enable Muscle texture for decoded diffuse patterns, or disable it for cloth RGB. Magenta = missing mapping or preview.";
+        : "Player-contact polygons only. Enable Muscle texture for decoded diffuse patterns, or disable it for cloth RGB. Magenta = missing mapping or preview." +
+          (_octocamoCatalog.AmbiguousMaterialHashes.Count == 0 ? string.Empty :
+              $" {_octocamoCatalog.AmbiguousMaterialHashes.Count} material(s) have conflicting duplicate OCTT rows and are shown unmapped; those rows are preserved on save.");
     public bool OctocamoViewEnabled
     {
         get => _octocamoViewEnabled;

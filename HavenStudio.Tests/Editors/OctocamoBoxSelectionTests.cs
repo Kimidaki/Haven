@@ -15,7 +15,7 @@ public sealed class OctocamoBoxSelectionTests(ITestOutputHelper output)
     [Fact]
     public async Task Opt_in_real_JJ_box_lists_overlaps_and_selects_exact_selector_without_editing()
     {
-        var stage = Environment.GetEnvironmentVariable("HAVEN_OCTOCAMO_STAGE");
+        var stage = Environment.GetEnvironmentVariable("HAVEN_JJ_OCTOCAMO_STAGE");
         if (string.IsNullOrWhiteSpace(stage)) return;
         using var temp = new TempDirectory();
         var path = temp.GetPath("n023a.geom");

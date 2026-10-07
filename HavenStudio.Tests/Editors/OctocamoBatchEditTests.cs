@@ -85,7 +85,7 @@ public sealed class OctocamoBatchEditTests(ITestOutputHelper output)
     [Fact]
     public async Task Opt_in_filtered_real_JJ_batch_is_undoable_surgical_and_saved_without_touching_source()
     {
-        var stage = Environment.GetEnvironmentVariable("HAVEN_OCTOCAMO_STAGE");
+        var stage = Environment.GetEnvironmentVariable("HAVEN_JJ_OCTOCAMO_STAGE");
         if (string.IsNullOrWhiteSpace(stage)) return;
         using var temp = new TempDirectory();
         var path = temp.GetPath("n023a.geom");

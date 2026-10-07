@@ -15,7 +15,7 @@ public sealed class OctocamoSaveWorkflowTests(ITestOutputHelper output)
     [Fact]
     public async Task Opt_in_map_inspector_changes_preview_saves_and_reopens_exact_face()
     {
-        var stage = Environment.GetEnvironmentVariable("HAVEN_OCTOCAMO_STAGE");
+        var stage = Environment.GetEnvironmentVariable("HAVEN_JJ_OCTOCAMO_STAGE");
         if (string.IsNullOrWhiteSpace(stage)) return;
         using var temp = new TempDirectory();
         var path = temp.GetPath("n023a.geom");
@@ -78,7 +78,7 @@ public sealed class OctocamoSaveWorkflowTests(ITestOutputHelper output)
     [Fact]
     public async Task Opt_in_geom_save_refuses_external_changes_without_overwrite()
     {
-        var stage = Environment.GetEnvironmentVariable("HAVEN_OCTOCAMO_STAGE");
+        var stage = Environment.GetEnvironmentVariable("HAVEN_JJ_OCTOCAMO_STAGE");
         if (string.IsNullOrWhiteSpace(stage)) return;
         using var temp = new TempDirectory();
         var path = temp.GetPath("n023a.geom");
@@ -107,7 +107,7 @@ public sealed class OctocamoSaveWorkflowTests(ITestOutputHelper output)
     [Fact]
     public void Opt_in_selector_requests_the_edited_preview_channel()
     {
-        var stage = Environment.GetEnvironmentVariable("HAVEN_OCTOCAMO_STAGE");
+        var stage = Environment.GetEnvironmentVariable("HAVEN_JJ_OCTOCAMO_STAGE");
         if (string.IsNullOrWhiteSpace(stage)) return;
         using var darStream = File.OpenRead(Path.Combine(stage, "cache.dar"));
         var entries = DarFile.Read(darStream).Entries;

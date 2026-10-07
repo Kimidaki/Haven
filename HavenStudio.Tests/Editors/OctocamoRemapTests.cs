@@ -202,18 +202,30 @@ public sealed class OctocamoRemapTests(ITestOutputHelper output)
     }
 
     [Fact]
-    public void Duplicate_nonzero_material_rows_are_rejected_and_reserved_spare_rows_are_not_counted()
+    public void Conflicting_duplicate_material_rows_do_not_disable_other_stage_mappings()
     {
-        var (geometry, _, catalog) = Fixture([1, 2], [1]);
+        var (geometry, _, catalog) = Fixture([1, 2], [1, 2]);
         try
         {
             var bytes = catalog.GetMappingBytes();
-            W(bytes, 0x620, 77);
+            W(bytes, 0x630, 77);
             using var reserved = new OctocamoSurfaceCatalog(geometry, bytes);
             Assert.Equal(0, reserved.AvailableMappingRows);
-            W(bytes, 4, 2);
-            W(bytes, 0x620, 1);
-            Assert.Throws<InvalidDataException>(() => new OctocamoSurfaceCatalog(geometry, bytes));
+            W(bytes, 0x630, 1);
+            W(bytes, 0x634, 103);
+            W(bytes, 4, 3);
+            using var duplicate = new OctocamoSurfaceCatalog(geometry, bytes);
+            Assert.Contains(1u, duplicate.AmbiguousMaterialHashes);
+            Assert.Equal(0u, duplicate.GetPatternHash(1));
+            Assert.Equal(102u, duplicate.GetPatternHash(2));
+            Assert.Throws<InvalidOperationException>(() => duplicate.RemapPattern(1, 103));
+            Assert.False(duplicate.IsMappingDirty);
+            Assert.Equal(bytes, duplicate.GetMappingBytes());
+
+            W(bytes, 0x634, 101);
+            using var identical = new OctocamoSurfaceCatalog(geometry, bytes);
+            Assert.Empty(identical.AmbiguousMaterialHashes);
+            Assert.Equal(101u, identical.GetPatternHash(1));
         }
         finally { catalog.Dispose(); geometry.CloseStream(); }
     }
@@ -252,7 +264,7 @@ public sealed class OctocamoRemapTests(ITestOutputHelper output)
     [Fact]
     public async Task Opt_in_real_jj_archive_save_and_encrypted_round_trip_preserve_every_other_byte()
     {
-        var stage = Environment.GetEnvironmentVariable("HAVEN_OCTOCAMO_STAGE");
+        var stage = Environment.GetEnvironmentVariable("HAVEN_JJ_OCTOCAMO_STAGE");
         var slot = Environment.GetEnvironmentVariable("HAVEN_OCTOCAMO_SLOT");
         if (string.IsNullOrWhiteSpace(stage) || string.IsNullOrWhiteSpace(slot)) return;
         using var temp = new TempDirectory();
@@ -307,7 +319,7 @@ public sealed class OctocamoRemapTests(ITestOutputHelper output)
     [Fact]
     public void Opt_in_full_retail_library_and_soil_remap_are_stage_wide()
     {
-        var stage = Environment.GetEnvironmentVariable("HAVEN_OCTOCAMO_STAGE");
+        var stage = Environment.GetEnvironmentVariable("HAVEN_JJ_OCTOCAMO_STAGE");
         var slot = Environment.GetEnvironmentVariable("HAVEN_OCTOCAMO_SLOT");
         if (string.IsNullOrWhiteSpace(stage) || string.IsNullOrWhiteSpace(slot)) return;
         var geomBytes = File.ReadAllBytes(Path.Combine(stage, "n023a.geom"));

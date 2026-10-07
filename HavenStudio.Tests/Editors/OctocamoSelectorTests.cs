@@ -11,7 +11,7 @@ public sealed class OctocamoSelectorTests
     [Fact]
     public async Task Opt_in_real_stage_selected_face_retains_live_cloth_preview()
     {
-        var stage = Environment.GetEnvironmentVariable("HAVEN_OCTOCAMO_STAGE");
+        var stage = Environment.GetEnvironmentVariable("HAVEN_JJ_OCTOCAMO_STAGE");
         if (string.IsNullOrWhiteSpace(stage)) return;
         var host = new SceneHost();
         var editor = new CollisionEditorViewModel(host);
@@ -79,7 +79,7 @@ public sealed class OctocamoSelectorTests
     [Fact]
     public void Opt_in_real_stage_alias_selector_save_does_not_get_overwritten()
     {
-        var stage = Environment.GetEnvironmentVariable("HAVEN_OCTOCAMO_STAGE");
+        var stage = Environment.GetEnvironmentVariable("HAVEN_JJ_OCTOCAMO_STAGE");
         if (string.IsNullOrWhiteSpace(stage)) return;
         var original = File.ReadAllBytes(Path.Combine(stage, "n023a.geom"));
         var geometry = new GeomFile(new MemoryStream(original, writable: false), Endianness.Big);
@@ -104,7 +104,7 @@ public sealed class OctocamoSelectorTests
     [Fact]
     public void Opt_in_real_stage_surgical_save_persists_cabinet_selector()
     {
-        var stage = Environment.GetEnvironmentVariable("HAVEN_OCTOCAMO_STAGE");
+        var stage = Environment.GetEnvironmentVariable("HAVEN_JJ_OCTOCAMO_STAGE");
         if (string.IsNullOrWhiteSpace(stage)) return;
         var original = File.ReadAllBytes(Path.Combine(stage, "n023a.geom"));
         var geometry = new GeomFile(new MemoryStream(original, writable: false), Endianness.Big);
@@ -136,7 +136,7 @@ public sealed class OctocamoSelectorTests
     [Fact]
     public void Opt_in_real_stage_dropdowns_refresh_preview_and_round_trip()
     {
-        var stage = Environment.GetEnvironmentVariable("HAVEN_OCTOCAMO_STAGE");
+        var stage = Environment.GetEnvironmentVariable("HAVEN_JJ_OCTOCAMO_STAGE");
         if (string.IsNullOrWhiteSpace(stage)) return;
         var original = File.ReadAllBytes(Path.Combine(stage, "n023a.geom"));
         var geometry = new GeomFile(new MemoryStream(original, writable: false), Endianness.Big);
@@ -190,7 +190,7 @@ public sealed class OctocamoSelectorTests
     [Fact]
     public void Opt_in_stage_smoke_test_resolves_real_contact_materials()
     {
-        var stage = Environment.GetEnvironmentVariable("HAVEN_OCTOCAMO_STAGE");
+        var stage = Environment.GetEnvironmentVariable("HAVEN_JJ_OCTOCAMO_STAGE");
         if (string.IsNullOrWhiteSpace(stage)) return;
         using var archiveStream = File.OpenRead(Path.Combine(stage, "cache.dar"));
         var entries = DarFile.Read(archiveStream).Entries;

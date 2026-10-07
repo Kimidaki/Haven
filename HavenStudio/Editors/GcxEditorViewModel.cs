@@ -82,18 +82,8 @@ public sealed class GcxEditorViewModel : INotifyPropertyChanged, IDisposable
     public bool HasDocument => _documentSession.HasDocument;
     public IReadOnlyList<GcxCameraReference> GetSpectatorCameras()
     {
-        if (SettingsStore.Current.IsMgs3) return [];
-        var cameras = new List<GcxCameraReference>();
-        foreach (var node in ScriptItems.Where(node => node.Script != null))
-        {
-            var tables = GcxCameraWriter.Scan(node.Script!.Bytes);
-            for (int table = 0; table < tables.Count; table++)
-                for (int row = 0; row < tables[table].Count; row++)
-                    cameras.Add(new GcxCameraReference(node.Script, node.Name, table, row,
-                        GcxCameraWriter.Vector(tables[table],row*7), GcxCameraWriter.Vector(tables[table],row*7+3),
-                        tables[table].Literals[row*7+6].Value));
-        }
-        return cameras;
+        return SettingsStore.Current.IsMgs3 || _documentSession.Document is not { } document
+            ? [] : GcxCameraWriter.ScanDocument(document);
     }
 
     public IReadOnlyList<GcxSdmAreaReference> GetSdmAreas() =>

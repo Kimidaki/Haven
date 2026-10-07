@@ -11,7 +11,7 @@ public sealed class OctocamoFacePreviewTests(ITestOutputHelper output)
     [Fact]
     public async Task Opt_in_selected_face_uv_and_occluding_contact_audit()
     {
-        var stage = Environment.GetEnvironmentVariable("HAVEN_OCTOCAMO_STAGE");
+        var stage = Environment.GetEnvironmentVariable("HAVEN_JJ_OCTOCAMO_STAGE");
         var slot = Environment.GetEnvironmentVariable("HAVEN_OCTOCAMO_SLOT");
         if (string.IsNullOrWhiteSpace(stage) || string.IsNullOrWhiteSpace(slot)) return;
         var host = new SceneHost();

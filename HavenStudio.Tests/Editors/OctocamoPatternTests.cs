@@ -64,7 +64,7 @@ public sealed class OctocamoPatternTests
     [Fact]
     public void Opt_in_stage_patterns_decode_and_material_edits_update_uvs_without_changing_geometry()
     {
-        var stage = Environment.GetEnvironmentVariable("HAVEN_OCTOCAMO_STAGE");
+        var stage = Environment.GetEnvironmentVariable("HAVEN_JJ_OCTOCAMO_STAGE");
         var slot = Environment.GetEnvironmentVariable("HAVEN_OCTOCAMO_SLOT");
         if (string.IsNullOrWhiteSpace(stage) || string.IsNullOrWhiteSpace(slot)) return;
         using var archive = File.OpenRead(Path.Combine(stage, "cache.dar"));

@@ -17,6 +17,7 @@ namespace HavenStudio.Editors;
 public sealed class OctocamoSurfaceCatalog : IDisposable
 {
     private readonly Dictionary<uint, uint> _patterns = new();
+    private readonly HashSet<uint> _ambiguousMaterials = [];
     private readonly Dictionary<uint, Vector3> _colours = new();
     private readonly Dictionary<GeoBlock, GeoMaterialHeader> _tables = new();
     private readonly HashSet<uint>? _registeredPatterns;
@@ -27,6 +28,7 @@ public sealed class OctocamoSurfaceCatalog : IDisposable
     private readonly Dictionary<uint, IImage> _previewImages = new();
     private IReadOnlyDictionary<uint, OctocamoPatternPreview> _previewData = new Dictionary<uint, OctocamoPatternPreview>();
     public IEnumerable<uint> PatternHashes => _patterns.Values.Distinct();
+    public IReadOnlyCollection<uint> AmbiguousMaterialHashes => _ambiguousMaterials;
     public OctocamoPatternAtlas? PatternAtlas { get; private set; }
     public bool PreviewMusclePatterns { get; set; }
     public bool IsMappingDirty => !_octt.AsSpan().SequenceEqual(_originalOctt);
@@ -66,6 +68,8 @@ public sealed class OctocamoSurfaceCatalog : IDisposable
     {
         if (material == 0 || !_usedMaterials.Contains(material))
             throw new InvalidOperationException("Select a material used by this GEOM.");
+        if (_ambiguousMaterials.Contains(material))
+            throw new InvalidOperationException("This material has conflicting duplicate OCTT rows. Haven cannot safely choose one row to remap; the table was not changed.");
         if (!_previewData.ContainsKey(pattern))
             throw new InvalidOperationException("Load the online SLOT and choose a successfully decoded pattern.");
         if (!IsPatternRegistered(pattern) || _registeredMaterials?.Contains(material) != true)
@@ -99,15 +103,23 @@ public sealed class OctocamoSurfaceCatalog : IDisposable
     private void ReadPatterns()
     {
         _patterns.Clear();
+        _ambiguousMaterials.Clear();
         for (var i = 0; i < MappingCount; i++)
         {
             var material = Read(_octt, 0x610 + i * 16);
             var pattern = Read(_octt, 0x614 + i * 16);
-            // Zero is an empty row, not a material. Ambiguous nonzero duplicate
-            // rows must not silently select a different lookup than the game.
+            // Retail stages can contain duplicate material rows. Identical rows
+            // are harmless; conflicting rows have unknown runtime precedence, so
+            // leave only that material unresolved rather than rejecting the stage.
             if (material == 0) continue;
-            if (!_patterns.TryAdd(material, pattern))
-                throw new InvalidDataException($"Duplicate OctoCamo mapping for material 0x{material:X6}.");
+            if (_ambiguousMaterials.Contains(material)) continue;
+            if (_patterns.TryGetValue(material, out var previous))
+            {
+                if (previous == pattern) continue;
+                _patterns.Remove(material);
+                _ambiguousMaterials.Add(material);
+            }
+            else _patterns.Add(material, pattern);
         }
     }
 
@@ -220,7 +232,8 @@ public sealed class OctocamoSurfaceCatalog : IDisposable
         return table.Materials.Take(32).Select((id, slot) =>
         {
             var pattern = _patterns.GetValueOrDefault(id);
-            var description = pattern == 0 ? "unmapped" : Name(pattern) +
+            var description = _ambiguousMaterials.Contains(id) ? "ambiguous duplicate OCTT rows" :
+                pattern == 0 ? "unmapped" : Name(pattern) +
                 (_registeredPatterns != null && !_registeredPatterns.Contains(pattern) ? " (not registered)" : string.Empty);
             return new OctocamoMaterialOption(slot, id, pattern, $"{slot}: {Name(id)} → {description}")
                 { Preview = PatternImage(pattern) };
