@@ -22,9 +22,11 @@ This branch adds tools for inspecting and editing the surface data used when a c
 
 Magenta indicates a missing mapping or preview. If a stage table contains conflicting duplicate rows for one material, Haven leaves that material unmapped and does not rewrite either row: the game's precedence is not yet established. Other materials remain available.
 
-**Game files are not installed or encrypted by Save Map.** Existing `.enc` copies are not refreshed. Re-encrypt edited files with the correct key for *that stage*, validate the output, and test it in-game before replacing a known-good installation.
+Texture viewer
+<img width="1920" height="1044" alt="Screenshot 2026-10-07 132158" src="https://github.com/user-attachments/assets/4ad1092b-f87d-44af-9fd9-b65d95f962af" />
 
-<!-- Add screenshots: OctoCamo view and inspector; overlapping-face box selection; stage-wide remapping dialog. -->
+Texture/cloth hue viewer
+<img width="1920" height="1044" alt="Screenshot 2026-10-07 132044" src="https://github.com/user-attachments/assets/199e72f0-628c-48bd-9400-b36639714dad" />
 
 ## Additional map-editor workflows (this branch)
 
@@ -34,13 +36,23 @@ The map editor also discovers supporting files from the opened stage rather than
 | --- | --- | --- |
 | Placements and effects | **Placements**, **Effects**, **Add Object**, **Add Effect**; select an item for its Inspector | Writable GCX placement/script data or GEOM effects, according to the selected object's source. **Placement collision** separately previews referenced GEOM collision at the placed object's transform. |
 | Spectator cameras | **View > Cameras**, then **Spectator cameras** in the outline | Camera position and target in the loaded GCX. The Inspector can **Use current view** or **Look through camera**. Only supported camera tables are shown. |
-| Vegetation | **View > Vegetation**, then a PDL group or instance in the outline | Group movement or an individual instance's position in the linked PDL. Instance scale is previewed, not edited. |
-| SDM area | **View > SDM Area**, then **SDM area** in the outline | The editable starting `area_max` radius in the loaded GCX. The final `area_min` boundary is displayed for context. This overlay starts hidden for each newly opened GEOM. |
-| Lighting | **Lights** in the outline and **Game lighting** in the toolbar | Light edits use their loaded light file; Game lighting is a preview toggle. |
+| Vegetation | **View > Vegetation**, then a PDL group or instance in the outline | Group movement or an individual instance's position in the linked PDL. |
+| SDM area | **View > SDM Area**, then **SDM area** in the outline | The editable starting `area_max` radius in the loaded GCX. The final `area_min` boundary is displayed for context. |
 
-**Save Map** writes each dirty, supported source (such as GCX, GEOM, light files, PDL or OctoCamo data); it does not turn plaintext output into an installed game-ready stage. Inspect the save status and validate each changed file before encryption and in-game testing.
+Placement rotation
+<img width="1920" height="1044" alt="Screenshot 2026-10-07 132753" src="https://github.com/user-attachments/assets/e50946b1-4dbf-4b86-8f6e-4a7cdf8be093" />
 
-<!-- Add screenshots: placement collision; spectator-camera Inspector; PDL vegetation; SDM area overlay. -->
+Effect highlighting with special behaviour for RACE goals show next available locations
+<img width="1920" height="1044" alt="Screenshot 2026-10-07 133202" src="https://github.com/user-attachments/assets/683cf097-d69f-49f7-94f9-48043876c8fa" />
+
+Spectator Cameras
+<img width="1920" height="1044" alt="Screenshot 2026-10-07 133354" src="https://github.com/user-attachments/assets/5778eae7-be17-414f-a2ec-9ba53d8a1788" />
+
+Vegetation viewer and editor as entire batch or individual instance
+<img width="1920" height="1044" alt="Screenshot 2026-10-07 133915" src="https://github.com/user-attachments/assets/bed68f2f-5e19-46c3-b290-10c280e3ca2e" />
+
+SDM circle starting size viewer and editor
+<img width="1920" height="1044" alt="Screenshot 2026-10-07 134114" src="https://github.com/user-attachments/assets/27f82d6c-b519-40c5-b7d7-d18433581eb2" />
 
 ## Build and test
 
