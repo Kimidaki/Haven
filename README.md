@@ -22,9 +22,8 @@ This branch adds tools for inspecting and editing the surface data used when a c
 
 Magenta indicates a missing mapping or preview. If a stage table contains conflicting duplicate rows for one material, Haven leaves that material unmapped and does not rewrite either row: the game's precedence is not yet established. Other materials remain available.
 
-**Game files are not installed or encrypted by Save Map.** Existing `.enc` copies are not refreshed. Re-encrypt edited files with the correct key for *that stage*, validate the output, and test it in-game before replacing a known-good installation.
-
-<!-- Add screenshots: OctoCamo view and inspector; overlapping-face box selection; stage-wide remapping dialog. -->
+<img width="1920" height="1044" alt="Screenshot 2026-10-07 132158" src="https://github.com/user-attachments/assets/4ad1092b-f87d-44af-9fd9-b65d95f962af" />
+<img width="1920" height="1044" alt="Screenshot 2026-10-07 132044" src="https://github.com/user-attachments/assets/199e72f0-628c-48bd-9400-b36639714dad" />
 
 ## Build and test
 
