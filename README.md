@@ -26,6 +26,22 @@ Magenta indicates a missing mapping or preview. If a stage table contains confli
 
 <!-- Add screenshots: OctoCamo view and inspector; overlapping-face box selection; stage-wide remapping dialog. -->
 
+## Additional map-editor workflows (this branch)
+
+The map editor also discovers supporting files from the opened stage rather than assuming one map's filenames or camera layout. These views have data to show only when Haven can decode the corresponding stage resource; an empty view on one stage does not mean every stage lacks that feature.
+
+| Workflow | Where to find it | What an edit saves |
+| --- | --- | --- |
+| Placements and effects | **Placements**, **Effects**, **Add Object**, **Add Effect**; select an item for its Inspector | Writable GCX placement/script data or GEOM effects, according to the selected object's source. **Placement collision** separately previews referenced GEOM collision at the placed object's transform. |
+| Spectator cameras | **View > Cameras**, then **Spectator cameras** in the outline | Camera position and target in the loaded GCX. The Inspector can **Use current view** or **Look through camera**. Only supported camera tables are shown. |
+| Vegetation | **View > Vegetation**, then a PDL group or instance in the outline | Group movement or an individual instance's position in the linked PDL. Instance scale is previewed, not edited. |
+| SDM area | **View > SDM Area**, then **SDM area** in the outline | The editable starting `area_max` radius in the loaded GCX. The final `area_min` boundary is displayed for context. This overlay starts hidden for each newly opened GEOM. |
+| Lighting | **Lights** in the outline and **Game lighting** in the toolbar | Light edits use their loaded light file; Game lighting is a preview toggle. |
+
+**Save Map** writes each dirty, supported source (such as GCX, GEOM, light files, PDL or OctoCamo data); it does not turn plaintext output into an installed game-ready stage. Inspect the save status and validate each changed file before encryption and in-game testing.
+
+<!-- Add screenshots: placement collision; spectator-camera Inspector; PDL vegetation; SDM area overlay. -->
+
 ## Build and test
 
 HavenStudio targets .NET 10. From the repository root:
@@ -36,6 +52,15 @@ dotnet test HavenStudio.Tests/HavenStudio.Tests.csproj
 ```
 
 The automated tests check editor and format behaviour. They do not establish that a saved stage is safe or visually correct in-game.
+
+To run the optional, read-only stage-discovery checks against a local stage in PowerShell:
+
+```powershell
+$env:HAVEN_STAGE_FEATURE_ROOT = 'C:\path\to\stage'
+dotnet test HavenStudio.Tests/HavenStudio.Tests.csproj --filter FullyQualifiedName~StageFeatureDiscoveryTests
+```
+
+These checks exercise OctoCamo discovery and camera-table scanning/editing in memory; they do not change the stage files. They have been run on AA, VV and JJ. Older offset-specific OctoCamo fixture tests remain explicitly JJ-only and use `HAVEN_JJ_OCTOCAMO_STAGE` instead.
 
 ## Credits
 
