@@ -27,3 +27,9 @@ Cloth hue viewer
 
 Texture viewer
 <img width="1920" height="1044" alt="Texture viewer" src="https://github.com/user-attachments/assets/199e72f0-628c-48bd-9400-b36639714dad" />
+
+## Credits
+
+- GhzGangster and Jayveer for their various GCX and MDN projects
+- Zoft for his dictionary contributions
+- TrikzMe for some LT3 reverse engineering
